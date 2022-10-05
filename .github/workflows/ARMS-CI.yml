@@ -135,7 +135,7 @@ jobs:
       - name: set to production state
         if: ${{inputs.mode}} == "coordinator"
         run: |
-          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "sudo sed -i '/^environment=/s/DISABLE_APSCHEDULER=True/DISABLE_APSCHEDULER=False/' /etc/supervisor/conf.d/dispatch.conf" 
+          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no < ci/server-prep-for-prod.sh 
   image-server:
     name: Create AMI from built and tested server (from the EC2 runner)
     needs: [start-runner,start-server,test-server]
