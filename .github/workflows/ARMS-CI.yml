@@ -1,0 +1,210 @@
+name: reusable_server_build
+
+on: 
+  workflow_call:
+    inputs:
+      server-launch-template:
+        required: True
+        type: string
+      server-launch-template-version:
+        required: True
+        type: string
+      runner-launch-template:
+        required: True
+        type: string
+      runner-launch-template-version:
+        required: True
+        type: string
+      mode: # e.g. "coordinator" or "worker"
+        required: True
+        type: string
+      repo-name:
+        required: True
+        type: string
+      branch: 
+        required: True
+        type: string
+      run-number:
+        required: True
+        type: string
+
+permissions:
+  id-token: write
+
+  
+jobs:
+  start-runner:
+    name: starts self-hosted EC2 runner instance
+    runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.start-ec2-runner.outputs.label }}
+      ec2-instance-id: ${{ steps.start-ec2-runner.outputs.ec2-instance-id }}
+    steps:
+      - name: configure aws creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: us-east-1
+          #TODO - replace role with secret
+          role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
+          role-session-name: RunnerStart
+      - name: Determine EC2 params
+        run: |
+          # until ec2-github-runner supports launch templates we need to break out these fields
+          EC2_IMAGE_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.ImageId' --output text)
+          EC2_INSTANCE_TYPE=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.InstanceType' --output text)
+          EC2_SUBNET_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].SubnetId' --output text)
+          EC2_SECURITY_GROUP_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].Groups[0]' --output text)
+          echo "EC2_IMAGE_ID=$EC2_IMAGE_ID" >> $GITHUB_ENV
+          echo "EC2_INSTANCE_TYPE=$EC2_INSTANCE_TYPE" >> $GITHUB_ENV
+          echo "EC2_SUBNET_ID=$EC2_SUBNET_ID" >> $GITHUB_ENV
+          echo "EC2_SECURITY_GROUP_ID=$EC2_SECURITY_GROUP_ID" >> $GITHUB_ENV
+       
+      - name: Start EC2 runner
+        id: start-ec2-runner
+        uses: machulav/ec2-github-runner@v2
+        with:
+          mode: start
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          ec2-image-id: ${{ env.EC2_IMAGE_ID }}
+          ec2-instance-type: ${{ env.EC2_INSTANCE_TYPE }}
+          subnet-id: ${{ env.EC2_SUBNET_ID }}
+          security-group-id: ${{ env.EC2_SECURITY_GROUP_ID }}
+
+#iam-role-name: my-role-name # optional, requires additional permissions
+  start-server:
+    name: starts the server we are building
+    runs-on: ubuntu-latest
+    outputs: 
+      server-ec2-instance-id: ${{ steps.start-ec2-server.outputs.server-ec2-instance-id }}
+      server-ec2-private-ip: ${{ steps.start-ec2-server.outputs.server-ec2-private-ip }}
+    steps:
+      - name: configure aws creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: us-east-1
+          #TODO - replace role with secret
+          role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
+          role-session-name: ServerStart
+      - name: start EC2 server
+        id: start-ec2-server
+        run: |
+          AMI_ID=$(aws ssm get-parameters --names /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id --query 'Parameters[0].[Value]' --output text)
+          echo "using AMI: $AMI_ID"
+          SERVER_INSTANCE_ID=$(aws ec2 run-instances \
+            --launch-template LaunchTemplateId=${{inputs.server-launch-template}},Version=${{inputs.server-launch-template-version}} \
+            --query 'Instances[0].InstanceId' \
+            --output text)
+          echo "started instance: $SERVER_INSTANCE_ID"
+          aws ec2 wait instance-running \
+            --instance-ids $SERVER_INSTANCE_ID  
+          SERVER_IP_ADDRESS=$(aws ec2 describe-instances --instance-ids $SERVER_INSTANCE_ID \
+            --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
+          echo "ip address: $SERVER_IP_ADDRESS"
+          echo "::set-output name=server-ec2-instance-id::$SERVER_INSTANCE_ID"
+          echo "::set-output name=server-ec2-private-ip::$SERVER_IP_ADDRESS"
+  build-server:
+    name: Build the server (from the EC2 runner)
+    needs: [start-runner, start-server] # required to start the main job when the runner is ready
+
+    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
+    steps:
+      - name: clone repo
+        uses: actions/checkout@v3
+        with:
+          token: ${{secrets.GH_PERSONAL_ACCESS_TOKEN}}
+      - name: setup SSH   
+        uses: webfactory/ssh-agent@v0.5.4
+        with: 
+          ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
+      - name: run build script
+        run: |
+          echo "Running for branch: ${{ inputs.branch }}"
+          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "bash -s" < ci/server-build.sh "${{inputs.mode}}" "${{inputs.branch}}"
+  test-server:
+    name: Test the built server (from the EC2 runner)
+    needs: [start-runner,start-server,build-server]
+    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
+    steps:
+      - name: setup SSH
+        uses: webfactory/ssh-agent@v0.5.4
+        with: 
+          ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
+      - name: run test script
+        run: |
+          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "bash -s" < ci/server-test.sh ${{inputs.mode}}
+      - name: set to production state
+        if: ${{inputs.mode}} == "coordinator"
+        run: |
+          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "sudo sed '/^environment=/s/DISABLE_APSCHEDULER=True/DISABLE_APSCHEDULER=False/' /etc/supervisor/conf.d/dispatch.conf" 
+  image-server:
+    name: Create AMI from built and tested server (from the EC2 runner)
+    needs: [start-runner,start-server,test-server]
+    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
+    steps:
+      - name: Install AWSCLI
+        run: |
+          sudo apt-get install awscli -y -q
+      - name: configure aws creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: us-east-1
+          #TODO - replace role with secret
+          role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
+          role-session-name: ServerImage
+      - name: create AMI from instance
+        id: create-image
+        run: |
+          DATE=$(date +'%Y-%m-%d')
+          echo "mode: ${{inputs.mode}}"
+          echo "branch: ${{inputs.branch}}"
+          echo "run number: ${{inputs.run-number}}"
+          echo "date: $DATE"
+          NAME="${{ inputs.repo-name}}-${{inputs.mode}}_${{inputs.branch}}-${DATE}_r${{inputs.run-number}}"
+          echo "name: $NAME"
+          echo 'aws ec2 create-image --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --name $NAME --description "built from Github Actions" --query "ImageId" --output text)'
+          IMAGE_ID=$(aws ec2 create-image --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --name $NAME --description "built from Github Actions" --query "ImageId" --output text)
+          aws ec2 wait image-available --image-ids $IMAGE_ID
+          echo "creating image-id: $IMAGE_ID"
+  terminate-server:
+    name: Terminate the server we have built
+    needs:
+      - start-server # required to get output from the start-runner job
+      - image-server # required to wait when the main job is done
+    runs-on: ubuntu-latest
+    #if: ${{ false }}  # disable for now
+    if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
+    steps:
+      - name: configure aws creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: us-east-1
+          #TODO - replace role with secret
+          role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
+          role-session-name: ServerEnd
+      - name: Stop EC2 server
+        run: |
+          aws ec2 terminate-instances --instance-ids ${{needs.start-server.outputs.server-ec2-instance-id}}
+  stop-runner:
+    name: Terminate self-hosted EC2 runner
+    needs:
+      - start-runner # required to get output from the start-runner job
+      - image-server # required to wait when the main job is done
+    runs-on: ubuntu-latest
+    if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
+    steps:
+      - name: configure aws creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: us-east-1
+          #TODO - replace role with secret
+          role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
+          role-session-name: RunnerEnd
+      - name: Stop EC2 runner
+        uses: machulav/ec2-github-runner@v2
+        with:
+          mode: stop
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          label: ${{ needs.start-runner.outputs.label }}
+          ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id }}
+  
+  
