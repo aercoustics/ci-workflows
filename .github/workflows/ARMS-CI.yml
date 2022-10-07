@@ -27,9 +27,6 @@ on:
       run-number:
         required: True
         type: string
-      terminate-on-error:
-        required: True
-        type: boolean
 
 permissions:
   id-token: write
