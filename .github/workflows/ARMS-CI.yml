@@ -27,6 +27,9 @@ on:
       run-number:
         required: True
         type: string
+      terminate-on-error:
+        required: True
+        type: boolean
 
 permissions:
   id-token: write
@@ -171,8 +174,8 @@ jobs:
       - start-server # required to get output from the start-runner job
       - image-server # required to wait when the main job is done
     runs-on: ubuntu-latest
-    #if: ${{ false }}  # disable for now
-    if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
+    if: ${{ false }}  # disable for now
+    #if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
     steps:
       - name: configure aws creds
         uses: aws-actions/configure-aws-credentials@v1
