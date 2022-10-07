@@ -164,11 +164,19 @@ jobs:
           echo "date: $DATE"
           NAME="${{ inputs.repo-name}}-${{inputs.mode}}_${{inputs.branch}}-${DATE}_r${{inputs.run-number}}"
           echo "name: $NAME"
-          # TODO: https://stackoverflow.com/a/30994640/2600531
-          echo 'aws ec2 create-image --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --name $NAME --description "built from Github Actions" --query "ImageId" --output text)'
+
           IMAGE_ID=$(aws ec2 create-image --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --name $NAME --description "built from Github Actions" --query "ImageId" --output text)
-          aws ec2 wait image-available --image-ids $IMAGE_ID
           echo "creating image-id: $IMAGE_ID"
+
+          while [ "${exit_status}" != "0" ]
+          do
+            SNAPSHOT_ID=$(aws ec2 describe-images --filters "Name=image-id,Values=${IMAGE_ID}" --query 'Images[0].BlockDeviceMappings[0].Ebs.SnapshotId' --output text)
+            SNAPSHOT_PROGRESS=$(aws ec2 describe-snapshots --filters Name=snapshot-id,Values=${SNAPSHOT_ID} --query 'Snapshots[0].Progress')
+            echo "progress: $SNAPSHOT_PROGRESS"
+            aws ec2 wait image-available --image-ids $IMAGE_ID
+            exit_status="$?"
+          done  
+          
   terminate-server:
     name: Terminate the server we have built
     needs:
