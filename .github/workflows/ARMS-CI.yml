@@ -164,6 +164,7 @@ jobs:
           echo "date: $DATE"
           NAME="${{ inputs.repo-name}}-${{inputs.mode}}_${{inputs.branch}}-${DATE}_r${{inputs.run-number}}"
           echo "name: $NAME"
+          # TODO: https://stackoverflow.com/a/30994640/2600531
           echo 'aws ec2 create-image --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --name $NAME --description "built from Github Actions" --query "ImageId" --output text)'
           IMAGE_ID=$(aws ec2 create-image --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --name $NAME --description "built from Github Actions" --query "ImageId" --output text)
           aws ec2 wait image-available --image-ids $IMAGE_ID
