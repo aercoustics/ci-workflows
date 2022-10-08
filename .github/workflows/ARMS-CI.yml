@@ -109,7 +109,7 @@ jobs:
     name: Build the server (from the EC2 runner)
     needs: [start-runner, start-server] # required to start the main job when the runner is ready
 
-    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
+    runs-on: ubuntu-latest # run the job on the newly created runner
     steps:
       # - name: clone repo
       #  uses: actions/checkout@v3
@@ -119,6 +119,13 @@ jobs:
       #  uses: webfactory/ssh-agent@v0.5.4
       #  with: 
       #    ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
+      - name: configure aws creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: us-east-1
+          #TODO - replace role with secret
+          role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
+          role-session-name: RunnerStart
       - name: confirm creds
         run: |
           echo "access key cli:"
