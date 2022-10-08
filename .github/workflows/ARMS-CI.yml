@@ -111,18 +111,41 @@ jobs:
 
     runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
     steps:
-      - name: clone repo
-        uses: actions/checkout@v3
+      # - name: clone repo
+      #  uses: actions/checkout@v3
+      #  with:
+      #    token: ${{secrets.GH_PERSONAL_ACCESS_TOKEN}}
+      #- name: setup SSH   
+      #  uses: webfactory/ssh-agent@v0.5.4
+      #  with: 
+      #    ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
+      - name: run build script
+        id: build-script
+        uses: nohmad/aws-ssm-send-command-action@master
         with:
-          token: ${{secrets.GH_PERSONAL_ACCESS_TOKEN}}
-      - name: setup SSH   
-        uses: webfactory/ssh-agent@v0.5.4
-        with: 
-          ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+        targets: |
+          [{"Key":"InstanceIds","Values":["i-0c679d7ca8cfa0f9f"]}]
+        document-name: AWS-RunRemoteScript
+        parameters: |
+          {
+            "sourceType": ["GitHub"],
+            "sourceInfo": [
+              " {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"    
+              ],
+            "commandLine": ["bash server-build.sh coordinator CI"],
+            "workingDirectory": [""],
+            "executionTimeout": ["3600"]
+          }
       - name: run build script
         run: |
-          echo "Running for branch: ${{ inputs.branch }}"
-          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "bash -s" < ci/server-build.sh "${{inputs.mode}}" "${{inputs.branch}}"
+          echo "script status: ${{ steps.build-script.outputs.status }}"
+          echo "script command-id: ${{ steps.build-script.outputs.command-id }}"
+          echo "script output: ${{ steps.build-script.outputs.output }}"
+
+      #    ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "bash -s" < ci/server-build.sh "${{inputs.mode}}" "${{inputs.branch}}"
   test-server:
     name: Test the built server (from the EC2 runner)
     needs: [start-runner,start-server,build-server]
