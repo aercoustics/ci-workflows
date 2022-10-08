@@ -162,7 +162,7 @@ jobs:
           echo "branch: ${{inputs.branch}}"
           echo "run number: ${{inputs.run-number}}"
           echo "date: $DATE"
-          NAME="${{ inputs.repo-name}}-${{inputs.mode}}_${{inputs.branch}}-${DATE}_r${{inputs.run-number}}"
+          NAME="${{ inputs.repo-name}}_${{inputs.mode}}_${{inputs.branch}}_${DATE}_r${{inputs.run-number}}"
           echo "name: $NAME"
 
           IMAGE_ID=$(aws ec2 create-image --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --name $NAME --description "built from Github Actions" --query "ImageId" --output text)
