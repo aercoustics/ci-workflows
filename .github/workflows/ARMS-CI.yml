@@ -121,9 +121,9 @@ jobs:
       #    ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
       - name: confirm creds
         run: |
-        echo "access key cli:"
-        aws configure get aws_secret_access_key
-        echo "access key env: ${{ env.AWS_ACCESS_KEY_ID }}"
+          echo "access key cli:"
+          aws configure get aws_secret_access_key
+          echo "access key env: ${{ env.AWS_ACCESS_KEY_ID }}"
        
       - name: run build script
         id: build-script
