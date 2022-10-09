@@ -141,14 +141,20 @@ jobs:
           echo "command: $COMMAND"
           echo "parameter json: $PARAMETER_JSON"
           echo "parameter json dnw: $PARAMETER_JSON_DNW"
-          aws ssm send-command --document-name "AWS-RunRemoteScript"\
+          COMMAND_ID=$(aws ssm send-command --document-name "AWS-RunRemoteScript"\
             --document-version "1"\
             --targets "Key=instanceids,Values=${{needs.start-server.outputs.server-ec2-instance-id}}"\
             --parameters "${PARAMETER_JSON}"\
+            --cloud-watch-output-config "CloudWatchLogGroupName=github-ci,CloudWatchOutputEnabled=true"
             --timeout-seconds 600\
             --max-concurrency "50"\
             --max-errors "0"\
-            --region us-east-1
+            --region us-east-1\
+            --query 'Command.CommandId'\
+            --output text)
+          echo "COMMAND_ID: $COMMAND_ID"
+          aws ssm list-command-invocations --command-id $COMMAND_ID --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --details
+
           
       # - name: run build script
       #   id: build-script
