@@ -145,7 +145,7 @@ jobs:
             --document-version "1"\
             --targets "Key=instanceids,Values=${{needs.start-server.outputs.server-ec2-instance-id}}"\
             --parameters "${PARAMETER_JSON}"\
-            --cloud-watch-output-config "CloudWatchLogGroupName=github-ci,CloudWatchOutputEnabled=true"
+            --cloud-watch-output-config "CloudWatchLogGroupName=github-ci,CloudWatchOutputEnabled=true"\
             --timeout-seconds 600\
             --max-concurrency "50"\
             --max-errors "0"\
