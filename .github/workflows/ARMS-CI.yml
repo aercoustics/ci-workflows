@@ -109,7 +109,7 @@ jobs:
     name: Build the server (from the EC2 runner)
     needs: [start-runner, start-server] # required to start the main job when the runner is ready
 
-    runs-on: ubuntu-latest # run the job on the newly created runner
+    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
     steps:
       # - name: clone repo
       #  uses: actions/checkout@v3
@@ -126,34 +126,35 @@ jobs:
           #TODO - replace role with secret
           role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
           role-session-name: RunnerStart
-      # - name: confirm creds
-      #   run: |
-      #     echo "access key env: ${{ env.AWS_ACCESS_KEY_ID }}"
-      #     aws ssm send-command --document-name "AWS-RunRemoteScript" --document-version "1" --targets "Key=instanceids,Values=i-0c679d7ca8cfa0f9f" --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["bash server-build.sh coordinator CI"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
-       
-      - name: run build script
-        id: build-script
-        uses: nohmad/aws-ssm-send-command-action@master
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-          targets: |
-            [{"Key":"InstanceIds","Values":["i-05b062d3496df94ba"]}]
-          document-name: AWS-RunRemoteScript
-          parameters: |
-            {
-              "sourceType": ["GitHub"],
-              "sourceInfo": [" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],
-              "commandLine": ["bash server-build.sh coordinator CI"],
-              "workingDirectory": [""],
-              "executionTimeout": ["3600"]
-            }
       - name: run build script
         run: |
-          echo "script status: ${{ steps.build-script.outputs.status }}"
-          echo "script command-id: ${{ steps.build-script.outputs.command-id }}"
-          echo "script output: ${{ steps.build-script.outputs.output }}"
+          SCRIPT_PATH=ci/server-build.sh
+          COMMAND="bash server-build.sh ${{ inputs.branch }} ${{ inputs.mode }}
+          aws ssm send-command --document-name "AWS-RunRemoteScript" --document-version "1" --targets "Key=instanceids,Values=${{needs.start-server.outputs.server-ec2-private-ip}}" --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"${{ inputs.repo-name}}\",\n \"path\":\"${SCRIPT_PATH}\",\n \"getOptions\":\"branch:${{ inputs.branch }}\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["${COMMAND}"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
+       
+      # - name: run build script
+      #   id: build-script
+      #   uses: nohmad/aws-ssm-send-command-action@master
+      #   with:
+      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-1
+      #     targets: |
+      #       [{"Key":"InstanceIds","Values":["i-05b062d3496df94ba"]}]
+      #     document-name: AWS-RunRemoteScript
+      #     parameters: |
+      #       {
+      #         "sourceType": ["GitHub"],
+      #         "sourceInfo": [" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],
+      #         "commandLine": ["bash server-build.sh coordinator CI"],
+      #         "workingDirectory": [""],
+      #         "executionTimeout": ["3600"]
+      #       }
+      # - name: run build script
+      #   run: |
+      #     echo "script status: ${{ steps.build-script.outputs.status }}"
+      #     echo "script command-id: ${{ steps.build-script.outputs.command-id }}"
+      #     echo "script output: ${{ steps.build-script.outputs.output }}"
 
       #    ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "bash -s" < ci/server-build.sh "${{inputs.mode}}" "${{inputs.branch}}"
   test-server:
