@@ -129,7 +129,7 @@ jobs:
       - name: confirm creds
         run: |
           echo "access key env: ${{ env.AWS_ACCESS_KEY_ID }}"
-          aws ssm send-command --document-name "AWS-RunRemoteScript" --document-version "1" --targets "Key=instanceids,Values=i-0c679d7ca8cfa0f9f" --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":[".\\test_script.ps1"],"workingDirectory":[""],"executionTimeout":["3600"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-2
+          aws ssm send-command --document-name "AWS-RunRemoteScript" --document-version "1" --targets "Key=instanceids,Values=i-0c679d7ca8cfa0f9f" --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["bash server-build.sh coordinator CI"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
        
       # - name: run build script
       #   id: build-script
