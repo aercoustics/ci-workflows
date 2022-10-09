@@ -134,7 +134,8 @@ jobs:
           REPO_NAME=${{inputs.repo-name}}
           SCRIPT_PATH=ci/server-build.sh
           COMMAND="bash server-build.sh ${{ inputs.branch }} ${{ inputs.mode }}"
-          PARAMETER_JSON=$(jq -crn --arg rn "$REPO_NAME" --arg br "$BRANCH" --arg sp "$SCRIPT_PATH" --arg cmd "$COMMAND" '{sourceType: ["Github"], sourceInfo: [ { owner: "aercoustics", repository: $rn, path: $sp, getOptions: "branch:CI-systems-manager", tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" } ], commandLine: [$cmd] }')
+          SOURCE_INFO=$(jq -crn --arg rn "$REPO_NAME" --arg br "branch:$BRANCH" --arg sp "$SCRIPT_PATH" '[ { owner: "aercoustics", repository: $rn, path: $sp, getOptions: $br, tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" } ]')
+          PARAMETER_JSON=$(jq -crn --arg cmd "$COMMAND" --arg srcinf "$SOURCE_INFO" '{sourceType: ["Github"], sourceInfo: $srcinf, commandLine: [$cmd] }')
           #PARAMETER_JSON='{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["bash server-build.sh coordinator CI"]}'
           # PARAMETER_JSON="'$PARAMETER_JSON'"
           echo "script path: $SCRIPT_PATH"
