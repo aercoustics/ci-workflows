@@ -100,11 +100,7 @@ jobs:
           echo "started instance: $SERVER_INSTANCE_ID"
           aws ec2 wait instance-running \
             --instance-ids $SERVER_INSTANCE_ID  
-          SERVER_IP_ADDRESS=$(aws ec2 describe-instances --instance-ids $SERVER_INSTANCE_ID \
-            --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
-          echo "ip address: $SERVER_IP_ADDRESS"
           echo "::set-output name=server-ec2-instance-id::$SERVER_INSTANCE_ID"
-          echo "::set-output name=server-ec2-private-ip::$SERVER_IP_ADDRESS"
   build-server:
     name: Build the server (from the EC2 runner)
     needs: [start-runner, start-server] # required to start the main job when the runner is ready
@@ -138,7 +134,7 @@ jobs:
           COMMAND="bash server-build.sh ${{ inputs.branch }} ${{ inputs.mode }}"
           echo "script path: $SCRIPT_PATH"
           echo "command: $COMMAND"
-          aws ssm send-command --document-name "AWS-RunRemoteScript" --document-version "1" --targets "Key=instanceids,Values=${{needs.start-server.outputs.server-ec2-private-ip}}" --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"${{ inputs.repo-name}}\",\n \"path\":\"${SCRIPT_PATH}\",\n \"getOptions\":\"branch:${{ inputs.branch }}\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["${COMMAND}"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
+          aws ssm send-command --document-name "AWS-RunRemoteScript" --document-version "1" --targets "Key=instanceids,Values=${{needs.start-server.outputs.server-ec2-instance-id}}" --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"${{ inputs.repo-name}}\",\n \"path\":\"${SCRIPT_PATH}\",\n \"getOptions\":\"branch:${{ inputs.branch }}\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["${COMMAND}"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
        
       # - name: run build script
       #   id: build-script
