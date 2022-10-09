@@ -111,6 +111,12 @@ jobs:
 
     runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
     steps:
+      - name: install AWSCLI
+        run: |
+          sudo apt-get -y -qq -o=Dpkg::Use-Pty=0 install unzip
+          curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -qq awscliv2.zip
+          sudo ./aws/install
       # - name: clone repo
       #  uses: actions/checkout@v3
       #  with:
@@ -180,9 +186,6 @@ jobs:
     needs: [start-runner,start-server,test-server]
     runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
     steps:
-      - name: Install AWSCLI
-        run: |
-          sudo apt-get install awscli -y -q
       - name: configure aws creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
