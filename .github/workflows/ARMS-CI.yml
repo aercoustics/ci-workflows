@@ -136,14 +136,14 @@ jobs:
           COMMAND="bash server-build.sh ${{ inputs.branch }} ${{ inputs.mode }}"
           # PARAMETER_JSON=$(jq -crn --arg rn "$REPO_NAME" --arg br "$BRANCH" --arg sp "$SCRIPT_PATH" --arg cmd "$COMMAND" '{sourceType: ["Github"], sourceInfo: [ { owner: "aercoustics", repository: $rn, path: $sp, getOptions: "branch:CI-systems-manager", tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" } ], commandLine: [$cmd] }' | jq -cr 'with_entries(.value |= tostring )')
           PARAMETER_JSON='{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["bash server-build.sh coordinator CI"]}'
-          PARAMETER_JSON="'$PARAMETER_JSON'"
+          # PARAMETER_JSON="'$PARAMETER_JSON'"
           echo "script path: $SCRIPT_PATH"
           echo "command: $COMMAND"
           echo "parameter json: $PARAMETER_JSON"
           aws ssm send-command --document-name "AWS-RunRemoteScript"\
             --document-version "1"\
             --targets "Key=instanceids,Values=${{needs.start-server.outputs.server-ec2-instance-id}}"\
-            --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["bash server-build.sh coordinator CI"]}'\
+            --parameters "${PARAMETER_JSON}"\
             --timeout-seconds 600\
             --max-concurrency "50"\
             --max-errors "0"\
