@@ -141,7 +141,7 @@ jobs:
           echo "script path: $SCRIPT_PATH"
           echo "command: $COMMAND"
           echo "parameter json: $PARAMETER_JSON"
-          echo "parameter json dnw: PARAMETER_JSON_DNW"
+          echo "parameter json dnw: $PARAMETER_JSON_DNW"
           aws ssm send-command --document-name "AWS-RunRemoteScript"\
             --document-version "1"\
             --targets "Key=instanceids,Values=${{needs.start-server.outputs.server-ec2-instance-id}}"\
