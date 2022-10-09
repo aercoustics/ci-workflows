@@ -130,12 +130,12 @@ jobs:
           role-session-name: RunnerStart
       - name: run build script
         run: |
-          BRANCH=${{inputs.branch}}
-          REPO_NAME=${{inputs.repo-name}}
+          # BRANCH=${{inputs.branch}}
+          # REPO_NAME=${{inputs.repo-name}}
           SCRIPT_PATH=ci/server-build.sh
           COMMAND="bash server-build.sh ${{ inputs.mode }} ${{ inputs.branch }}"
-          SOURCE_INFO=$(jq -crn --arg rn "$REPO_NAME" --arg br "branch:$BRANCH" --arg sp "$SCRIPT_PATH" '{ owner: "aercoustics", repository: $rn, path: $sp, getOptions: $br, tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" }')
-          PARAMETER_JSON$(jq -crn --arg cmd "$COMMAND" --arg srcinf "$SOURCE_INFO" '{sourceType: ["GitHub"], sourceInfo: [$srcinf], commandLine: [$cmd] }')
+          SOURCE_INFO=$(jq -crn --arg rn "${{inputs.repo-name}}" --arg br "branch:${{inputs.branch}}" --arg sp "$SCRIPT_PATH" '{ owner: "aercoustics", repository: $rn, path: $sp, getOptions: $br, tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" }')
+          PARAMETER_JSON=$(jq -crn --arg cmd "$COMMAND" --arg srcinf "$SOURCE_INFO" '{sourceType: ["GitHub"], sourceInfo: [$srcinf], commandLine: [$cmd] }')
           
           echo "script path: $SCRIPT_PATH"
           echo "command: $COMMAND"
