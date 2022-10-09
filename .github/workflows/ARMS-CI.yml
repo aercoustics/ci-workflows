@@ -126,29 +126,29 @@ jobs:
           #TODO - replace role with secret
           role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
           role-session-name: RunnerStart
-      - name: confirm creds
-        run: |
-          echo "access key env: ${{ env.AWS_ACCESS_KEY_ID }}"
-          aws ssm send-command --document-name "AWS-RunRemoteScript" --document-version "1" --targets "Key=instanceids,Values=i-0c679d7ca8cfa0f9f" --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["bash server-build.sh coordinator CI"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
+      # - name: confirm creds
+      #   run: |
+      #     echo "access key env: ${{ env.AWS_ACCESS_KEY_ID }}"
+      #     aws ssm send-command --document-name "AWS-RunRemoteScript" --document-version "1" --targets "Key=instanceids,Values=i-0c679d7ca8cfa0f9f" --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["bash server-build.sh coordinator CI"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
        
-      # - name: run build script
-      #   id: build-script
-      #   uses: nohmad/aws-ssm-send-command-action@master
-      #   with:
-      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-      #     aws-region: us-east-1
-      #     targets: |
-      #       [{"Key":"InstanceIds","Values":["i-0c679d7ca8cfa0f9f"]}]
-      #     document-name: AWS-RunRemoteScript
-      #     parameters: |
-      #       {
-      #         "sourceType": ["GitHub"],
-      #         "sourceInfo": [" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],
-      #         "commandLine": ["bash server-build.sh coordinator CI"],
-      #         "workingDirectory": [""],
-      #         "executionTimeout": ["3600"]
-      #       }
+      - name: run build script
+        id: build-script
+        uses: nohmad/aws-ssm-send-command-action@master
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+          targets: |
+            [{"Key":"InstanceIds","Values":["i-05b062d3496df94ba"]}]
+          document-name: AWS-RunRemoteScript
+          parameters: |
+            {
+              "sourceType": ["GitHub"],
+              "sourceInfo": [" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],
+              "commandLine": ["bash server-build.sh coordinator CI"],
+              "workingDirectory": [""],
+              "executionTimeout": ["3600"]
+            }
       - name: run build script
         run: |
           echo "script status: ${{ steps.build-script.outputs.status }}"
