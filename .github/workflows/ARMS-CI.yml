@@ -134,7 +134,7 @@ jobs:
           REPO_NAME=${{inputs.repo-name}}
           SCRIPT_PATH=ci/server-build.sh
           COMMAND="bash server-build.sh ${{ inputs.branch }} ${{ inputs.mode }}"
-          PARAMETER_JSON=$(jq -crn --arg rn "$REPO_NAME" --arg br "$BRANCH" --arg sp "$SCRIPT_PATH" --arg cmd "$COMMAND" '{sourceType: ["Github"], sourceInfo: [ { owner: "aercoustics", repository: $rn, path: $sp, getOptions: "branch:${{inputs.branch}}", tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" } ], commandLine: [$cmd] }' | jq -cr 'with_entries(.value |= tostring )')
+          PARAMETER_JSON=$(jq -crn --arg rn "$REPO_NAME" --arg br "$BRANCH" --arg sp "$SCRIPT_PATH" --arg cmd "$COMMAND" '{sourceType: ["Github"], sourceInfo: [ { owner: "aercoustics", repository: $rn, path: $sp, getOptions: "branch:CI-systems-manager", tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" } ], commandLine: [$cmd] }' | jq -cr 'with_entries(.value |= tostring )')
           PARAMETER_JSON="'$PARAMETER_JSON'"
           echo "script path: $SCRIPT_PATH"
           echo "command: $COMMAND"
@@ -147,7 +147,7 @@ jobs:
             --max-concurrency "50"\
             --max-errors "0"\
             --region us-east-1
-       
+          
       # - name: run build script
       #   id: build-script
       #   uses: nohmad/aws-ssm-send-command-action@master
