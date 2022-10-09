@@ -129,7 +129,9 @@ jobs:
       - name: run build script
         run: |
           SCRIPT_PATH=ci/server-build.sh
-          COMMAND="bash server-build.sh ${{ inputs.branch }} ${{ inputs.mode }}
+          COMMAND="bash server-build.sh ${{ inputs.branch }} ${{ inputs.mode }}"
+          echo "script path: $SCRIPT_PATH"
+          echo "command: $COMMAND"
           aws ssm send-command --document-name "AWS-RunRemoteScript" --document-version "1" --targets "Key=instanceids,Values=${{needs.start-server.outputs.server-ec2-private-ip}}" --parameters '{"sourceType":["GitHub"],"sourceInfo":[" {\n \"owner\":\"aercoustics\",\n \"repository\":\"${{ inputs.repo-name}}\",\n \"path\":\"${SCRIPT_PATH}\",\n \"getOptions\":\"branch:${{ inputs.branch }}\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],"commandLine":["${COMMAND}"]}' --timeout-seconds 600 --max-concurrency "50" --max-errors "0" --region us-east-1
        
       # - name: run build script
