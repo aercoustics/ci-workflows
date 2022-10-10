@@ -25,9 +25,11 @@ runs:
   using: "composite"
   steps:
     - run: |
-        SOURCE_INFO=$(jq -crn --arg rn "${{inputs.repo-name}}" --arg br "branch:${{inputs.repo-branch}}" --arg sp "${{inputs.script-path}}" --arg ro "${{inputs.repo-owner}}" '{ owner: $ro, repository: $rn, path: $sp, getOptions: $br, tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" }')
+        TOKEN="ssm-secure:{{${{ssm-parameter-github-PAT}}}}"
+        SOURCE_INFO=$(jq -crn --arg rn "${{inputs.repo-name}}" --arg br "branch:${{inputs.repo-branch}}" --arg sp "${{inputs.script-path}}" --arg ro "${{inputs.repo-owner2}}" --arg tok "$TOKEN" '{ owner: $ro, repository: $rn, path: $sp, getOptions: $br, tokenInfo: $tok }')
         PARAMETER_JSON=$(jq -crn --arg cmd "${{inputs.command}}" --arg srcinf "$SOURCE_INFO" '{sourceType: ["GitHub"], sourceInfo: [$srcinf], commandLine: [$cmd] }')
         
+        echo "token: $TOKEN"
         echo "script path: ${{inputs.script-path}}"
         echo "command: ${{inputs.command}}"
         echo "parameter json: $PARAMETER_JSON"
