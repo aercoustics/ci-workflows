@@ -101,8 +101,8 @@ jobs:
           aws ec2 wait instance-running \
             --instance-ids $SERVER_INSTANCE_ID  
           echo "::set-output name=server-ec2-instance-id::$SERVER_INSTANCE_ID"
-  build-server:
-    name: Build the server (from the EC2 runner)
+  build-test-image-server:
+    name: Build, test, and image the server
     needs: [start-runner, start-server] # required to start the main job when the runner is ready
 
     runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
@@ -113,14 +113,7 @@ jobs:
           curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -qq awscliv2.zip
           sudo ./aws/install
-      # - name: clone repo
-      #  uses: actions/checkout@v3
-      #  with:
-      #    token: ${{secrets.GH_PERSONAL_ACCESS_TOKEN}}
-      #- name: setup SSH   
-      #  uses: webfactory/ssh-agent@v0.5.4
-      #  with: 
-      #    ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
+
       - name: configure aws creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -128,117 +121,41 @@ jobs:
           #TODO - replace role with secret
           role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
           role-session-name: RunnerStart
-      # - uses: actions/checkout@v3
-      #   with:
-      #     token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-
-      # - run: |
-      #     set +e
-      #     pwd
-      #     ls -l
-      #     ls ./ci-workflows/ -l
-      #     ls ./ci-workflows/.github -l
-      #     ls ./ci-workflows/.github/actions/ -l
-      #     ls ./ci-workflows/.github/actions/SSM_run-remote-script -l
-
-      #     set -e
+      
       - name: run build script
         uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-build.sh
           command: bash server-build.sh ${{ inputs.mode }} ${{ inputs.branch }}
-          repo-owner2: aercoustics
-          repo-name2: ${{inputs.repo-name}}
-          repo-branch2: ${{inputs.branch}}
+          repo-owner: aercoustics
+          repo-name: ${{inputs.repo-name}}
+          repo-branch: ${{inputs.branch}}
           ssm-parameter-github-PAT: CHANGE-ME
-      # - name: run build script
-      #   run: |
-      #     SCRIPT_PATH=ci/server-build.sh
-      #     COMMAND="bash server-build.sh ${{ inputs.mode }} ${{ inputs.branch }}"
-      #     SOURCE_INFO=$(jq -crn --arg rn "${{inputs.repo-name}}" --arg br "branch:${{inputs.branch}}" --arg sp "$SCRIPT_PATH" '{ owner: "aercoustics", repository: $rn, path: $sp, getOptions: $br, tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" }')
-      #     PARAMETER_JSON=$(jq -crn --arg cmd "$COMMAND" --arg srcinf "$SOURCE_INFO" '{sourceType: ["GitHub"], sourceInfo: [$srcinf], commandLine: [$cmd] }')
-          
-      #     echo "script path: $SCRIPT_PATH"
-      #     echo "command: $COMMAND"
-      #     echo "parameter json: $PARAMETER_JSON"
-      #     echo "parameter json dnw: $PARAMETER_JSON_DNW"
-      #     COMMAND_ID=$(aws ssm send-command --document-name "AWS-RunRemoteScript"\
-      #       --document-version "1"\
-      #       --targets "Key=instanceids,Values=${{needs.start-server.outputs.server-ec2-instance-id}}"\
-      #       --parameters "${PARAMETER_JSON}"\
-      #       --cloud-watch-output-config "CloudWatchLogGroupName=github-ci,CloudWatchOutputEnabled=true"\
-      #       --timeout-seconds 600\
-      #       --max-concurrency "50"\
-      #       --max-errors "0"\
-      #       --region us-east-1\
-      #       --query 'Command.CommandId'\
-      #       --output text)
-      #     echo "COMMAND_ID: $COMMAND_ID"
-          
-      #     set +e
-      #     while [ "${exit_status}" != "0" ]
-      #     do
-      #       echo "waiting up to 100s for command completion..."
-      #       aws ssm wait command-executed --command-id $COMMAND_ID --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}}
-      #       exit_status="$?"  
-      #     done
-      #     set -e
-      # - name: run build script
-      #   id: build-script
-      #   uses: nohmad/aws-ssm-send-command-action@master
-      #   with:
-      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-      #     aws-region: us-east-1
-      #     targets: |
-      #       [{"Key":"InstanceIds","Values":["i-05b062d3496df94ba"]}]
-      #     document-name: AWS-RunRemoteScript
-      #     parameters: |
-      #       {
-      #         "sourceType": ["GitHub"],
-      #         "sourceInfo": [" {\n \"owner\":\"aercoustics\",\n \"repository\":\"dispatch\",\n \"path\":\"ci/server-build.sh\",\n \"getOptions\":\"branch:CI\",\n \"tokenInfo\":\"{{ssm-secure:dispatch-github-PAT}}\"\n}"],
-      #         "commandLine": ["bash server-build.sh coordinator CI"],
-      #         "workingDirectory": [""],
-      #         "executionTimeout": ["3600"]
-      #       }
-      # - name: run build script
-      #   run: |
-      #     echo "script status: ${{ steps.build-script.outputs.status }}"
-      #     echo "script command-id: ${{ steps.build-script.outputs.command-id }}"
-      #     echo "script output: ${{ steps.build-script.outputs.output }}"
 
-      #    ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "bash -s" < ci/server-build.sh "${{inputs.mode}}" "${{inputs.branch}}"
-  test-server:
-    name: Test the built server (from the EC2 runner)
-    needs: [start-runner,start-server,build-server]
-    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
-    steps:
-      - name: setup SSH
-        uses: webfactory/ssh-agent@v0.5.4
-        with: 
-          ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
       - name: run test script
-        run: |
-          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "bash -s" < ci/server-test.sh ${{inputs.mode}}
-      - name: set to production state
-        if: ${{inputs.mode}} == "coordinator"
-        run: |
-          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no < ci/server-prep-for-prod.sh 
-  image-server:
-    name: Create AMI from built and tested server (from the EC2 runner)
-    needs: [start-runner,start-server,test-server]
-    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
-    steps:
-      - name: configure aws creds
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
         with:
-          aws-region: us-east-1
-          #TODO - replace role with secret
-          role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
-          role-session-name: ServerImage
-      - name: create AMI from instance
-        id: create-image
+          instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
+          script-path: ci/server-test.sh
+          command: bash server-test.sh ${{ inputs.mode }}
+          repo-owner: aercoustics
+          repo-name: ${{inputs.repo-name}}
+          repo-branch: ${{inputs.branch}}
+          ssm-parameter-github-PAT: CHANGE-ME
+
+      - name: prepare server for prod
+        uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
+        with:
+          instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
+          script-path: ci/server-prep-for-prod.sh
+          command: bash server-prep-for-prod.sh
+          repo-owner: aercoustics
+          repo-name: ${{inputs.repo-name}}
+          repo-branch: ${{inputs.branch}}
+          ssm-parameter-github-PAT: CHANGE-ME
+      
+      - name: image server
         run: |
           DATE=$(date +'%Y-%m-%d')
           echo "mode: ${{inputs.mode}}"
@@ -251,6 +168,7 @@ jobs:
           IMAGE_ID=$(aws ec2 create-image --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --name $NAME --description "built from Github Actions" --query "ImageId" --output text)
           echo "creating image-id: $IMAGE_ID"
 
+          set +e
           while [ "${exit_status}" != "0" ]
           do
             SNAPSHOT_ID=$(aws ec2 describe-images --filters "Name=image-id,Values=${IMAGE_ID}" --query 'Images[0].BlockDeviceMappings[0].Ebs.SnapshotId' --output text)
@@ -259,12 +177,13 @@ jobs:
             aws ec2 wait image-available --image-ids $IMAGE_ID
             exit_status="$?"
           done  
-          
+          set -e
+    
   terminate-server:
     name: Terminate the server we have built
     needs:
       - start-server # required to get output from the start-runner job
-      - image-server # required to wait when the main job is done
+      - build-test-image-server # required to wait when the main job is done
     runs-on: ubuntu-latest
     if: always() && inputs.terminate
     steps:
