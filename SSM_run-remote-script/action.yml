@@ -9,13 +9,13 @@ inputs:
   command:
     required: True
     type: string
-  repo-owner2:
+  repo-owner:
     required: True
     type: string
-  repo-name2:
+  repo-name:
     required: True
     type: string
-  repo-branch2:
+  repo-branch:
     required: True
     type: string
   ssm-parameter-github-PAT:
