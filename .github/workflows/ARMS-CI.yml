@@ -129,7 +129,7 @@ jobs:
           role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
           role-session-name: RunnerStart
       - name: run build script
-        uses: aercoustics/ci-workflows/.github/workflows/SSM_run-remote-script@systems-manager
+        uses: ./.github/actions/SSM_run-remote-script@systems-manager
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-build.sh
