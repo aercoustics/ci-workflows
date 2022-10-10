@@ -30,6 +30,9 @@ on:
       terminate:
         required: True 
         type: boolean
+      github-pat-ssm-param:
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -131,7 +134,7 @@ jobs:
           repo-owner: 
           repo-name: ${{inputs.repo-name}}
           repo-branch: ${{inputs.branch}}
-          ssm-parameter-github-PAT: CHANGE-ME
+          github-pat-ssm-param: ${{inputs.github-pat-ssm-param}}
 
       - name: run test script
         uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
@@ -142,7 +145,7 @@ jobs:
           repo-owner: aercoustics
           repo-name: ${{inputs.repo-name}}
           repo-branch: ${{inputs.branch}}
-          ssm-parameter-github-PAT: CHANGE-ME
+          github-pat-ssm-param: ${{inputs.github-pat-ssm-param}}
 
       - name: prepare server for prod
         uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
@@ -153,7 +156,7 @@ jobs:
           repo-owner: aercoustics
           repo-name: ${{inputs.repo-name}}
           repo-branch: ${{inputs.branch}}
-          ssm-parameter-github-PAT: CHANGE-ME
+          github-pat-ssm-param: ${{inputs.github-pat-ssm-param}}
       
       - name: image server
         run: |
