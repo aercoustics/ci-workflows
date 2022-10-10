@@ -155,7 +155,12 @@ jobs:
           echo "COMMAND_ID: $COMMAND_ID"
           aws ssm list-command-invocations --command-id $COMMAND_ID --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --details
 
-          
+          while [ "${exit_status}" != "0" ]
+          do
+            aws ssm list-command-invocations --command-id $COMMAND_ID --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --details
+            aws ssm wait command-executed --command-id $COMMAND_ID --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}}
+            exit_status="$?"
+          done
       # - name: run build script
       #   id: build-script
       #   uses: nohmad/aws-ssm-send-command-action@master
