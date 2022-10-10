@@ -142,6 +142,8 @@ jobs:
       #     ls ./ci-workflows/.github/actions/SSM_run-remote-script -l
 
       #     set -e
+      - name: test action
+        uses: managedkaos/github-actions-two-actions/action1@master
       - name: run build script
         uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
         with:
