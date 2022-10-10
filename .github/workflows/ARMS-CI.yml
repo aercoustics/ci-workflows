@@ -142,17 +142,15 @@ jobs:
       #     ls ./ci-workflows/.github/actions/SSM_run-remote-script -l
 
       #     set -e
-      - name: test action
-        uses: managedkaos/github-actions-two-actions/action1@master
       - name: run build script
         uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-build.sh
           command: bash server-build.sh ${{ inputs.mode }} ${{ inputs.branch }}
-          repo-owner: aercoustics
-          repo-name: ${{inputs.repo-name}}
-          repo-branch: ${{inputs.branch}}
+          repo-owner2: aercoustics
+          repo-name2: ${{inputs.repo-name}}
+          repo-branch2: ${{inputs.branch}}
           ssm-parameter-github-PAT: CHANGE-ME
       # - name: run build script
       #   run: |

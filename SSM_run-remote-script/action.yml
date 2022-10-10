@@ -9,13 +9,13 @@ inputs:
   command:
     required: True
     type: string
-  repo-owner:
+  repo-owner2:
     required: True
     type: string
-  repo-name:
+  repo-name2:
     required: True
     type: string
-  repo-branch:
+  repo-branch2:
     required: True
     type: string
   ssm-parameter-github-PAT:
@@ -24,7 +24,7 @@ inputs:
 runs:
   steps:
     - run: |
-      SOURCE_INFO=$(jq -crn --arg rn "${{inputs.repo-name}}" --arg br "branch:${{inputs.repo-branch}}" --arg sp "${{inputs.script-path}}" --arg ro "${{inputs.repo-owner}}" '{ owner: $ro, repository: $rn, path: $sp, getOptions: $br, tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" }')
+      SOURCE_INFO=$(jq -crn --arg rn "${{inputs.repo-name2}}" --arg br "branch:${{inputs.repo-branch2}}" --arg sp "${{inputs.script-path}}" --arg ro "${{inputs.repo-owner2}}" '{ owner: $ro, repository: $rn, path: $sp, getOptions: $br, tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" }')
       PARAMETER_JSON=$(jq -crn --arg cmd "${{inputs.command}}" --arg srcinf "$SOURCE_INFO" '{sourceType: ["GitHub"], sourceInfo: [$srcinf], commandLine: [$cmd] }')
       
       echo "script path: ${{inputs.script-path}}"
