@@ -132,7 +132,7 @@ jobs:
         with:
           token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
       - name: run build script
-        uses: ./.github/actions/SSM_run-remote-script@systems-manager
+        uses: ./.github/actions/SSM_run-remote-script
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-build.sh
