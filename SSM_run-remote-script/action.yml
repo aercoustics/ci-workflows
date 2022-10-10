@@ -53,6 +53,10 @@ runs:
           echo "waiting up to 100s for command completion..."
           aws ssm wait command-executed --command-id $COMMAND_ID --instance-id ${{inputs.instance-id}}
           exit_status="$?"  
+          STATUS=$(aws ssm list-command-invocations --command-id $COMMAND_ID --instance-id ${{inputs.instance-id}} --query 'CommandInvocations[0].Status' --output text)
+          if [[ $status == "Failed"]]; then
+            exit 255
+          fi
           echo "exit_status: $exit_status"
         done
         set -e
