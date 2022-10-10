@@ -128,7 +128,7 @@ jobs:
           #TODO - replace role with secret
           role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
           role-session-name: RunnerStart
-      - use: actions/checkout@v3
+      - uses: actions/checkout@v3
       - name: run build script
         uses: ./.github/actions/SSM_run-remote-script@systems-manager
         with:
