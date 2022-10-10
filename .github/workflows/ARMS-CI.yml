@@ -128,11 +128,22 @@ jobs:
           #TODO - replace role with secret
           role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
           role-session-name: RunnerStart
-      - uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+      # - uses: actions/checkout@v3
+      #   with:
+      #     token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+
+      # - run: |
+      #     set +e
+      #     pwd
+      #     ls -l
+      #     ls ./ci-workflows/ -l
+      #     ls ./ci-workflows/.github -l
+      #     ls ./ci-workflows/.github/actions/ -l
+      #     ls ./ci-workflows/.github/actions/SSM_run-remote-script -l
+
+      #     set -e
       - name: run build script
-        uses: ./.github/actions/SSM_run-remote-script
+        uses: aercoustics/ci-workflows/.github/actions/SSM_run-remote-script@systems-manager
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-build.sh
