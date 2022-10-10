@@ -143,7 +143,7 @@ jobs:
 
       #     set -e
       - name: run build script
-        uses: aercoustics/ci-workflows/.github/actions/SSM_run-remote-script@systems-manager
+        uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-build.sh
