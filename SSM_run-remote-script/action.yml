@@ -53,6 +53,7 @@ runs:
           echo "waiting up to 100s for command completion..."
           aws ssm wait command-executed --command-id $COMMAND_ID --instance-id ${{inputs.instance-id}}
           exit_status="$?"  
+          echo "exit_status: $exit_status"
         done
         set -e
       shell: bash
