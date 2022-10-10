@@ -22,6 +22,7 @@ inputs:
     required: True
     type: string
 runs:
+  using: "composite"
   steps:
     - run: |
       SOURCE_INFO=$(jq -crn --arg rn "${{github.event.inputs.repo-name2}}" --arg br "branch:${{github.event.inputs.repo-branch2}}" --arg sp "${{inputs.script-path}}" --arg ro "${{inputs.repo-owner2}}" '{ owner: $ro, repository: $rn, path: $sp, getOptions: $br, tokenInfo: "{{ssm-secure:dispatch-github-PAT}}" }')
