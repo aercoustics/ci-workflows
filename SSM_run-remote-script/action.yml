@@ -58,7 +58,6 @@ runs:
             echo "detected failure" 
             exit 255
           fi
-          echo "exit_status: $exit_status"
         done
         set -e
       shell: bash
