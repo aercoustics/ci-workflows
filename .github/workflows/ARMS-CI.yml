@@ -30,6 +30,9 @@ on:
       terminate:
         required: True 
         type: boolean
+      github-pat-ssm-param:
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -100,62 +103,62 @@ jobs:
           echo "started instance: $SERVER_INSTANCE_ID"
           aws ec2 wait instance-running \
             --instance-ids $SERVER_INSTANCE_ID  
-          SERVER_IP_ADDRESS=$(aws ec2 describe-instances --instance-ids $SERVER_INSTANCE_ID \
-            --query 'Reservations[0].Instances[0].PrivateIpAddress' --output text)
-          echo "ip address: $SERVER_IP_ADDRESS"
           echo "::set-output name=server-ec2-instance-id::$SERVER_INSTANCE_ID"
-          echo "::set-output name=server-ec2-private-ip::$SERVER_IP_ADDRESS"
-  build-server:
-    name: Build the server (from the EC2 runner)
+  build-test-image-server:
+    name: Build, test, and image the server
     needs: [start-runner, start-server] # required to start the main job when the runner is ready
 
     runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
     steps:
-      - name: clone repo
-        uses: actions/checkout@v3
-        with:
-          token: ${{secrets.GH_PERSONAL_ACCESS_TOKEN}}
-      - name: setup SSH   
-        uses: webfactory/ssh-agent@v0.5.4
-        with: 
-          ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
-      - name: run build script
+      - name: install runner pacakges
         run: |
-          echo "Running for branch: ${{ inputs.branch }}"
-          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "bash -s" < ci/server-build.sh "${{inputs.mode}}" "${{inputs.branch}}"
-  test-server:
-    name: Test the built server (from the EC2 runner)
-    needs: [start-runner,start-server,build-server]
-    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
-    steps:
-      - name: setup SSH
-        uses: webfactory/ssh-agent@v0.5.4
-        with: 
-          ssh-private-key: ${{ secrets.ARMS_TUNNEL_SSH_PRIVATE_KEY }}
-      - name: run test script
-        run: |
-          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no "bash -s" < ci/server-test.sh ${{inputs.mode}}
-      - name: set to production state
-        if: ${{inputs.mode}} == "coordinator"
-        run: |
-          ssh ubuntu@${{needs.start-server.outputs.server-ec2-private-ip}} -o StrictHostKeyChecking=no < ci/server-prep-for-prod.sh 
-  image-server:
-    name: Create AMI from built and tested server (from the EC2 runner)
-    needs: [start-runner,start-server,test-server]
-    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
-    steps:
-      - name: Install AWSCLI
-        run: |
-          sudo apt-get install awscli -y -q
+          sudo apt-get -y -qq -o=Dpkg::Use-Pty=0 install unzip jq
+          curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -qq awscliv2.zip
+          sudo ./aws/install
+
       - name: configure aws creds
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-region: us-east-1
           #TODO - replace role with secret
           role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
-          role-session-name: ServerImage
-      - name: create AMI from instance
-        id: create-image
+          role-session-name: RunnerStart
+      
+      - name: run build script
+        uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
+        with:
+          instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
+          script-path: ci/server-build.sh
+          command: bash server-build.sh ${{ inputs.mode }} ${{ inputs.branch }}
+          repo-owner: aercoustics
+          repo-name: ${{inputs.repo-name}}
+          repo-branch: ${{inputs.branch}}
+          github-pat-ssm-param: ${{inputs.github-pat-ssm-param}}
+
+      - name: run test script
+        uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
+        with:
+          instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
+          script-path: ci/server-test.sh
+          command: bash server-test.sh ${{ inputs.mode }}
+          repo-owner: aercoustics
+          repo-name: ${{inputs.repo-name}}
+          repo-branch: ${{inputs.branch}}
+          github-pat-ssm-param: ${{inputs.github-pat-ssm-param}}
+
+      - name: prepare server for prod
+        uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
+        with:
+          instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
+          script-path: ci/server-prep-for-prod.sh
+          command: bash server-prep-for-prod.sh
+          repo-owner: aercoustics
+          repo-name: ${{inputs.repo-name}}
+          repo-branch: ${{inputs.branch}}
+          github-pat-ssm-param: ${{inputs.github-pat-ssm-param}}
+      
+      - name: image server
         run: |
           DATE=$(date +'%Y-%m-%d')
           echo "mode: ${{inputs.mode}}"
@@ -168,6 +171,7 @@ jobs:
           IMAGE_ID=$(aws ec2 create-image --instance-id ${{needs.start-server.outputs.server-ec2-instance-id}} --name $NAME --description "built from Github Actions" --query "ImageId" --output text)
           echo "creating image-id: $IMAGE_ID"
 
+          set +e
           while [ "${exit_status}" != "0" ]
           do
             SNAPSHOT_ID=$(aws ec2 describe-images --filters "Name=image-id,Values=${IMAGE_ID}" --query 'Images[0].BlockDeviceMappings[0].Ebs.SnapshotId' --output text)
@@ -176,12 +180,13 @@ jobs:
             aws ec2 wait image-available --image-ids $IMAGE_ID
             exit_status="$?"
           done  
-          
+          set -e
+    
   terminate-server:
     name: Terminate the server we have built
     needs:
       - start-server # required to get output from the start-runner job
-      - image-server # required to wait when the main job is done
+      - build-test-image-server # required to wait when the main job is done
     runs-on: ubuntu-latest
     if: always() && inputs.terminate
     steps:
@@ -199,7 +204,7 @@ jobs:
     name: Terminate self-hosted EC2 runner
     needs:
       - start-runner # required to get output from the start-runner job
-      - image-server # required to wait when the main job is done
+      - build-test-image-server # required to wait when the main job is done
     runs-on: ubuntu-latest
     if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
     steps:

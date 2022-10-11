@@ -1,0 +1,66 @@
+name: SSM run remote script
+inputs:
+  instance-id:
+    required: true
+    type: string
+  script-path:
+    required: True
+    type: string
+  command:
+    required: True
+    type: string
+  repo-owner:
+    required: True
+    type: string
+  repo-name:
+    required: True
+    type: string
+  repo-branch:
+    required: True
+    type: string
+  github-pat-ssm-param:
+    required: True
+    type: string
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        TOKEN="{{ssm-secure:${{inputs.github-pat-ssm-param}}}}"
+        SOURCE_INFO=$(jq -crn --arg rn "${{inputs.repo-name}}" --arg br "branch:${{inputs.repo-branch}}" --arg sp "${{inputs.script-path}}" --arg ro "${{inputs.repo-owner}}" --arg tok "$TOKEN" '{ owner: $ro, repository: $rn, path: $sp, getOptions: $br, tokenInfo: $tok }')
+        PARAMETER_JSON=$(jq -crn --arg cmd "${{inputs.command}}" --arg srcinf "$SOURCE_INFO" '{sourceType: ["GitHub"], sourceInfo: [$srcinf], commandLine: [$cmd] }')
+        
+        echo "token: $TOKEN"
+        echo "script path: ${{inputs.script-path}}"
+        echo "command: ${{inputs.command}}"
+        echo "parameter json: $PARAMETER_JSON"
+
+        COMMAND_ID=$(aws ssm send-command --document-name "AWS-RunRemoteScript"\
+          --document-version "1"\
+          --targets "Key=instanceids,Values=${{inputs.instance-id}}"\
+          --parameters "${PARAMETER_JSON}"\
+          --cloud-watch-output-config "CloudWatchLogGroupName=github-ci,CloudWatchOutputEnabled=true"\
+          --timeout-seconds 600\
+          --max-concurrency "50"\
+          --max-errors "0"\
+          --region us-east-1\
+          --query 'Command.CommandId'\
+          --output text)
+        echo "COMMAND_ID: $COMMAND_ID"
+        
+        set +e
+        while [ "${exit_status}" != "0" ]
+        do
+          echo "waiting up to 100s for command completion..."
+          aws ssm wait command-executed --command-id $COMMAND_ID --instance-id ${{inputs.instance-id}}
+          exit_status="$?"  
+          STATUS=$(aws ssm list-command-invocations --command-id $COMMAND_ID --instance-id ${{inputs.instance-id}} --query 'CommandInvocations[0].Status' --output text)
+          if [ "$STATUS" = "Failed" ]; then
+            echo "detected failure" 
+            exit 255
+          fi
+          echo "exit_status: $exit_status"
+        done
+        set -e
+      shell: bash
+    
+  
