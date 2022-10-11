@@ -126,7 +126,7 @@ jobs:
           role-session-name: RunnerStart
       
       - name: run build script
-        uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
+        uses: aercoustics/ci-workflows/SSM_run-remote-script@master
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-build.sh
@@ -137,7 +137,7 @@ jobs:
           github-pat-ssm-param: ${{inputs.github-pat-ssm-param}}
 
       - name: run test script
-        uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
+        uses: aercoustics/ci-workflows/SSM_run-remote-script@master
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-test.sh
@@ -148,7 +148,7 @@ jobs:
           github-pat-ssm-param: ${{inputs.github-pat-ssm-param}}
 
       - name: prepare server for prod
-        uses: aercoustics/ci-workflows/SSM_run-remote-script@systems-manager
+        uses: aercoustics/ci-workflows/SSM_run-remote-script@master
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-prep-for-prod.sh
