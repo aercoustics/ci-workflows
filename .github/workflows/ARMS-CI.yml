@@ -152,7 +152,7 @@ jobs:
         with:
           instance-id: ${{needs.start-server.outputs.server-ec2-instance-id}}
           script-path: ci/server-prep-for-prod.sh
-          command: bash server-prep-for-prod.sh
+          command: bash server-prep-for-prod.sh ${{ inputs.mode }}
           repo-owner: aercoustics
           repo-name: ${{inputs.repo-name}}
           repo-branch: ${{inputs.branch}}
