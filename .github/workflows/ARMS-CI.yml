@@ -82,7 +82,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs: 
       server-ec2-instance-id: ${{ steps.start-ec2-server.outputs.server-ec2-instance-id }}
-      server-ec2-private-ip: ${{ steps.start-ec2-server.outputs.server-ec2-private-ip }}
     steps:
       - name: configure aws creds
         uses: aws-actions/configure-aws-credentials@v1-node16
@@ -103,7 +102,8 @@ jobs:
           echo "started instance: $SERVER_INSTANCE_ID"
           aws ec2 wait instance-running \
             --instance-ids $SERVER_INSTANCE_ID  
-          echo "::set-output name=server-ec2-instance-id::$SERVER_INSTANCE_ID"
+          #echo "::set-output name=server-ec2-instance-id::$SERVER_INSTANCE_ID"
+          echo "server-ec2-instance-id=$SERVER_INSTANCE_ID" >> $GITHUB_OUTPUT
   build-test-image-server:
     name: Build, test, and image the server
     needs: [start-runner, start-server] # required to start the main job when the runner is ready
