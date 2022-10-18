@@ -112,7 +112,7 @@ jobs:
     steps:
       - name: install runner pacakges
         run: |
-          sudo apt-get -y -qq -o=Dpkg::Use-Pty=0 install unzip jq
+          sudo apt-get -y -qq -o=Dpkg::Use-Pty=0 -o=DPkg::Lock::Timeout=300 install unzip jq
           curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -qq awscliv2.zip
           sudo ./aws/install
