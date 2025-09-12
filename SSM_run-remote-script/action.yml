@@ -39,7 +39,7 @@ runs:
           --targets "Key=instanceids,Values=${{inputs.instance-id}}"\
           --parameters "${PARAMETER_JSON}"\
           --cloud-watch-output-config "CloudWatchLogGroupName=github-ci,CloudWatchOutputEnabled=true"\
-          --timeout-seconds 600\
+          --timeout-seconds 1800\
           --max-concurrency "50"\
           --max-errors "0"\
           --region us-east-1\
@@ -63,3 +63,4 @@ runs:
       shell: bash
     
   
+
