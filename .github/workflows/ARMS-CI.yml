@@ -47,7 +47,7 @@ jobs:
       ec2-instance-id: ${{ steps.start-ec2-runner.outputs.ec2-instance-id }}
     steps:
       - name: configure aws creds
-        uses: aws-actions/configure-aws-credentials@v1-node16
+        uses: aws-actions/configure-aws-credentials@v5.0.0
         with:
           aws-region: us-east-1
           #TODO - replace role with secret
@@ -84,7 +84,7 @@ jobs:
       server-ec2-instance-id: ${{ steps.start-ec2-server.outputs.server-ec2-instance-id }}
     steps:
       - name: configure aws creds
-        uses: aws-actions/configure-aws-credentials@v1-node16
+        uses: aws-actions/configure-aws-credentials@v5.0.0
         with:
           aws-region: us-east-1
           #TODO - replace role with secret
@@ -118,7 +118,7 @@ jobs:
           sudo ./aws/install
 
       - name: configure aws creds
-        uses: aws-actions/configure-aws-credentials@v1-node16
+        uses: aws-actions/configure-aws-credentials@v5.0.0
         with:
           aws-region: us-east-1
           #TODO - replace role with secret
@@ -191,7 +191,7 @@ jobs:
     if: always() && inputs.terminate
     steps:
       - name: configure aws creds
-        uses: aws-actions/configure-aws-credentials@v1-node16
+        uses: aws-actions/configure-aws-credentials@v5.0.0
         with:
           aws-region: us-east-1
           #TODO - replace role with secret
@@ -209,7 +209,7 @@ jobs:
     if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
     steps:
       - name: configure aws creds
-        uses: aws-actions/configure-aws-credentials@v1-node16
+        uses: aws-actions/configure-aws-credentials@v5.0.0
         with:
           aws-region: us-east-1
           #TODO - replace role with secret
