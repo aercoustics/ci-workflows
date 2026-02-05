@@ -53,17 +53,41 @@ jobs:
           #TODO - replace role with secret
           role-to-assume: ${{secrets.EC2_RUNNER_IAM_ROLE}}
           role-session-name: RunnerStart
-      - name: Determine EC2 params
+          # Add this step after "configure aws creds" and before "Determine EC2 params"
+      - name: Validate GitHub PAT
         run: |
-          # until ec2-github-runner supports launch templates we need to break out these fields
-          EC2_IMAGE_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.ImageId' --output text)
-          EC2_INSTANCE_TYPE=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.InstanceType' --output text)
-          EC2_SUBNET_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].SubnetId' --output text)
-          EC2_SECURITY_GROUP_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].Groups[0]' --output text)
-          echo "EC2_IMAGE_ID=$EC2_IMAGE_ID" >> $GITHUB_ENV
-          echo "EC2_INSTANCE_TYPE=$EC2_INSTANCE_TYPE" >> $GITHUB_ENV
-          echo "EC2_SUBNET_ID=$EC2_SUBNET_ID" >> $GITHUB_ENV
-          echo "EC2_SECURITY_GROUP_ID=$EC2_SECURITY_GROUP_ID" >> $GITHUB_ENV
+          # Check token validity and expiration
+          RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user)
+          
+          if echo "$RESPONSE" | grep -q "Bad credentials"; then
+            echo "::error::GitHub PAT is invalid or expired!"
+            exit 1
+          fi
+          
+          # Check rate limit which also shows token info
+          RATE_INFO=$(curl -s -H "Authorization: token ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}" \
+            https://api.github.com/rate_limit)
+          echo "Rate limit info: $RATE_INFO"
+          
+          # For fine-grained PATs, check expiration via API
+          TOKEN_INFO=$(curl -s -H "Authorization: token ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/user/installations 2>&1 || true)
+          
+          echo "Token appears valid. User: $(echo "$RESPONSE" | jq -r '.login')"
+            - name: Determine EC2 params
+              run: |
+                # until ec2-github-runner supports launch templates we need to break out these fields
+                EC2_IMAGE_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.ImageId' --output text)
+                EC2_INSTANCE_TYPE=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.InstanceType' --output text)
+                EC2_SUBNET_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].SubnetId' --output text)
+                EC2_SECURITY_GROUP_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].Groups[0]' --output text)
+                echo "EC2_IMAGE_ID=$EC2_IMAGE_ID" >> $GITHUB_ENV
+                echo "EC2_INSTANCE_TYPE=$EC2_INSTANCE_TYPE" >> $GITHUB_ENV
+                echo "EC2_SUBNET_ID=$EC2_SUBNET_ID" >> $GITHUB_ENV
+                echo "EC2_SECURITY_GROUP_ID=$EC2_SECURITY_GROUP_ID" >> $GITHUB_ENV
        
       - name: Start EC2 runner
         id: start-ec2-runner
