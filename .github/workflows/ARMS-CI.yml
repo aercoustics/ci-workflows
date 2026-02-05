@@ -77,17 +77,18 @@ jobs:
             https://api.github.com/user/installations 2>&1 || true)
           
           echo "Token appears valid. User: $(echo "$RESPONSE" | jq -r '.login')"
-            - name: Determine EC2 params
-              run: |
-                # until ec2-github-runner supports launch templates we need to break out these fields
-                EC2_IMAGE_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.ImageId' --output text)
-                EC2_INSTANCE_TYPE=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.InstanceType' --output text)
-                EC2_SUBNET_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].SubnetId' --output text)
-                EC2_SECURITY_GROUP_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].Groups[0]' --output text)
-                echo "EC2_IMAGE_ID=$EC2_IMAGE_ID" >> $GITHUB_ENV
-                echo "EC2_INSTANCE_TYPE=$EC2_INSTANCE_TYPE" >> $GITHUB_ENV
-                echo "EC2_SUBNET_ID=$EC2_SUBNET_ID" >> $GITHUB_ENV
-                echo "EC2_SECURITY_GROUP_ID=$EC2_SECURITY_GROUP_ID" >> $GITHUB_ENV
+          
+      - name: Determine EC2 params
+        run: |
+          # until ec2-github-runner supports launch templates we need to break out these fields
+          EC2_IMAGE_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.ImageId' --output text)
+          EC2_INSTANCE_TYPE=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.InstanceType' --output text)
+          EC2_SUBNET_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].SubnetId' --output text)
+          EC2_SECURITY_GROUP_ID=$(aws ec2 describe-launch-template-versions --launch-template-id ${{inputs.runner-launch-template}} --query 'LaunchTemplateVersions[0].LaunchTemplateData.NetworkInterfaces[0].Groups[0]' --output text)
+          echo "EC2_IMAGE_ID=$EC2_IMAGE_ID" >> $GITHUB_ENV
+          echo "EC2_INSTANCE_TYPE=$EC2_INSTANCE_TYPE" >> $GITHUB_ENV
+          echo "EC2_SUBNET_ID=$EC2_SUBNET_ID" >> $GITHUB_ENV
+          echo "EC2_SECURITY_GROUP_ID=$EC2_SECURITY_GROUP_ID" >> $GITHUB_ENV
        
       - name: Start EC2 runner
         id: start-ec2-runner
