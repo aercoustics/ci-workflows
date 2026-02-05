@@ -140,7 +140,7 @@ jobs:
           sudo apt-get -y -qq -o=Dpkg::Use-Pty=0 -o=DPkg::Lock::Timeout=300 install unzip jq
           curl -sS "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
           unzip -qq awscliv2.zip
-          sudo ./aws/install
+          sudo ./aws/install --update
 
       - name: configure aws creds
         uses: aws-actions/configure-aws-credentials@v5.0.0
