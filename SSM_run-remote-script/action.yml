@@ -46,6 +46,9 @@ runs:
           --query 'Command.CommandId'\
           --output text)
         echo "COMMAND_ID: $COMMAND_ID"
+        INSTANCE_ID="${{inputs.instance-id}}"
+        CW_URL="https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups/log-group/github-ci/log-events/${COMMAND_ID}%252F${INSTANCE_ID}%252FrunShellScript%252Fstdout"
+        echo "CloudWatch logs: $CW_URL"
         
         set +e
         while [ "${exit_status}" != "0" ]
